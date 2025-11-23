@@ -5,10 +5,10 @@
 #ifndef NETWORKMANAGER_H
 #define NETWORKMANAGER_H
 
-#include <winsock.h>
-#include <wininet.h>
-#include <ws2tcpip.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 
 #include "dns.h"
 

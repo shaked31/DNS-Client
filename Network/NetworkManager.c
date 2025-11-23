@@ -59,7 +59,7 @@ char* findDnsServerIP() {
     FILE* fptr;
     char result[MAX_CMD_OUTPUT_SIZE];
     char command[] = "ipconfig /all | find \"DNS Servers\"";
-    fptr = popen(command, "r");
+    fptr = _popen(command, "r");
     if (fgets(result, sizeof(result), fptr) != NULL) {
         char* ptrToIP = strchr(result, ':');
         ptrToIP += 2; // there is ' ' after ':'
@@ -70,9 +70,10 @@ char* findDnsServerIP() {
             char* IPstr = (char*)malloc(sizeof(char) * (subStrLen));
             strcpy(IPstr, ptrToIP);
             printf("The DNS Server IP is: %s\n", IPstr);
-            fclose(fptr);
+            _pclose(fptr);
             return IPstr;
         }
+        _pclose(fptr);
         return "";
     }
 }

@@ -1,8 +1,6 @@
-#include <iso646.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <winsock.h>
 
 #include "Network/dns.h"
 #include "Utils/Serializor.h"
@@ -17,7 +15,7 @@ int main(void) {
     // char filename[256];
     // fgets(filename, sizeof(filename), stdin);
     // filename[strcspn(filename, "\n")] = '\0';
-    const char* filename = "C:\\Users\\shaked\\OneDrive\\Desktop\\DNS-Client\\dns.txt";
+    const char* filename = "C:\\Users\\Shaked Pollak\\OneDrive\\Desktop\\DNS-Client\\dns.txt";
     FILE *fptr;
     fptr = fopen(filename, "r");
 
@@ -47,10 +45,8 @@ int main(void) {
         // packet_data must be freed after packet sent
 
         int packet = sendPacket(packet_data, dnsServerIP);
-        free((void*)packet_data);
-
     }
 
-    pclose(fptr);
+    fclose(fptr);
     return EXIT_SUCCESS;
 }
