@@ -15,8 +15,10 @@
 #define MAX_CMD_OUTPUT_SIZE 256
 #define DNS_PORT 53
 
-
-int sendPacket(const uint8_t* packet, char* ipDst);
+int networkInit();
+void networkFin();
+int sendPacket(const struct packet packet, const char* ipDst);
+char* recvPacket();
 char* findDnsServerIP();
 
 

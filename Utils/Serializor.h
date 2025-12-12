@@ -8,6 +8,13 @@
 #include <stdint.h>
 #include "../Network/dns.h"
 
-uint8_t* serializeRequest(struct dnsHeader, struct dnsQuery);
+#pragma pack(push, 1)
+struct packet {
+    uint8_t* packetData;
+    size_t packetSize;
+};
+#pragma pack(pop)
+
+struct packet serializeRequest(const struct dnsHeader, const struct dnsQuery);
 
 #endif //DNS_CLIENT_SERIALIZE_H

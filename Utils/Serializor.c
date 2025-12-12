@@ -4,11 +4,26 @@
 
 #include "Serializor.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-uint8_t* serializeRequest(struct dnsHeader header, struct dnsQuery query) {
-    uint8_t* buffer = (uint8_t*)malloc(sizeof(struct dnsHeader));
+struct packet serializeRequest(const struct dnsHeader header, const struct dnsQuery query) {
+    size_t packetSize =
+        sizeof(header.id) +
+        sizeof(header.flags) +
+        sizeof(header.QDcount) +
+        sizeof(header.ANcount) +
+        sizeof(header.NScount) +
+        sizeof(header.ARcount) +
+        query.Qname.qnameLength +
+        sizeof(query.Qtype) +
+        sizeof(query.Qclass);
+
+    uint8_t* buffer = (uint8_t*)malloc(packetSize);
+    uint8_t* start = buffer;
+
+
     memcpy(buffer, &header.id, sizeof(header.id));
     buffer += sizeof(header.id);
 
@@ -27,8 +42,8 @@ uint8_t* serializeRequest(struct dnsHeader header, struct dnsQuery query) {
     memcpy(buffer, &header.ARcount, sizeof(header.ARcount));
     buffer += sizeof(header.ARcount);
 
-    memcpy(buffer, &query.Qname, sizeof(query.Qname));
-    buffer += sizeof(query.Qname);
+    memcpy(buffer, query.Qname.qname, query.Qname.qnameLength);
+    buffer += query.Qname.qnameLength;
 
     memcpy(buffer, &query.Qtype, sizeof(query.Qtype));
     buffer += sizeof(query.Qtype);
@@ -36,5 +51,6 @@ uint8_t* serializeRequest(struct dnsHeader header, struct dnsQuery query) {
     memcpy(buffer, &query.Qclass, sizeof(query.Qclass));
     buffer += sizeof(query.Qclass);
 
-    return buffer;
+    struct packet p = {start, packetSize};
+    return p;
 }

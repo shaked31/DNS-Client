@@ -10,6 +10,7 @@
 #define MAX_FILENAME_LENGTH 256
 #define MAX_LINE_LENGTH 16
 
+
 struct flags {
     unsigned int QR : 1; // Query/Response flags. 0 for query and 1 for response.
     unsigned int OpCode : 4; // 0 for standard query
@@ -21,6 +22,7 @@ struct flags {
     unsigned int RCODE : 4; // Response code (set in the response by the server)
 };
 
+#pragma pack(push, 1)
 struct dnsHeader {
     uint16_t id;
     // struct flags flags;
@@ -30,14 +32,28 @@ struct dnsHeader {
     uint16_t NScount; // number of authority resource records in the authority section of the response (set in the response by the server)
     uint16_t ARcount; // number of resource records in the additional records section (set in the response by the server)
 };
+#pragma pack(pop)
 
+
+#pragma pack(push, 1)
+struct Qname {
+    const char* qname;
+    size_t qnameLength;
+};
+#pragma pack(pop)
+
+
+#pragma pack(push, 1)
 struct dnsQuery {
-    char* Qname;
+    struct Qname Qname;
     uint16_t Qtype;
     uint16_t Qclass;
 };
+#pragma pack(pop)
+
 
 struct dnsHeader buildHeader();
 struct dnsQuery buildQuery(char* dnsName);
+size_t getQnameLength(char* qname);
 
 #endif //DNS_H

@@ -11,6 +11,7 @@
 
 
 int main(void) {
+    networkInit();
     // printf("Hello!\nEnter File Location\n");
     // char filename[256];
     // fgets(filename, sizeof(filename), stdin);
@@ -28,7 +29,7 @@ int main(void) {
     struct dnsQuery query;
 
     char* dnsServerIP = findDnsServerIP();
-    if (dnsServerIP == "") {
+    if (strlen(dnsServerIP) == 0) {
         perror("Couldn't find the DNS Server's IP");
         return EXIT_FAILURE;
     }
@@ -38,15 +39,21 @@ int main(void) {
     while (fgets(buffer, sizeof(buffer), fptr) != NULL) { // reads each line
         printf("%s", buffer);
         char* newlinePosition = strchr(buffer, '\n');
-        *newlinePosition = 0x00;
+        if (newlinePosition != NULL) {
+            *newlinePosition = 0x00;
+        }
         query = buildQuery(buffer);
 
-        const uint8_t* packet_data = serializeRequest(header, query);
-        // packet_data must be freed after packet sent
+        const struct packet packet = serializeRequest(header, query);
+        sendPacket(packet, dnsServerIP);
+        free(packet.packetData);
+        free((void*)query.Qname.qname);
 
-        int packet = sendPacket(packet_data, dnsServerIP);
+        char* buffer = recvPacket();
+
     }
 
     fclose(fptr);
+    networkFin();
     return EXIT_SUCCESS;
 }
