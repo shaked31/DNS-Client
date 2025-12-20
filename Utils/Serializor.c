@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct packet serializeRequest(const struct dnsHeader header, const struct dnsQuery query) {
+struct hexPacket serializeRequest(const struct dnsHeader header, const struct dnsQuery query) {
     size_t packetSize =
         sizeof(header.id) +
         sizeof(header.flags) +
@@ -20,8 +20,8 @@ struct packet serializeRequest(const struct dnsHeader header, const struct dnsQu
         sizeof(query.Qtype) +
         sizeof(query.Qclass);
 
-    uint8_t* buffer = (uint8_t*)malloc(packetSize);
-    uint8_t* start = buffer;
+    char* buffer = malloc(packetSize);
+    char* start = buffer;
 
 
     memcpy(buffer, &header.id, sizeof(header.id));
@@ -51,6 +51,28 @@ struct packet serializeRequest(const struct dnsHeader header, const struct dnsQu
     memcpy(buffer, &query.Qclass, sizeof(query.Qclass));
     buffer += sizeof(query.Qclass);
 
-    struct packet p = {start, packetSize};
+    struct hexPacket p = {start, packetSize};
     return p;
+}
+
+struct packet deserializeResponse(char* hexResponse) {
+    struct dnsHeader header = {0};
+
+    memcpy(&header.id, hexResponse, sizeof(header.id));
+    hexResponse += sizeof(header.id);
+
+    memcpy(&header.flags, hexResponse, sizeof(header.flags));
+    hexResponse += sizeof(header.flags);
+
+    memcpy(&header.QDcount, hexResponse, sizeof(header.QDcount));
+    hexResponse += sizeof(header.QDcount);
+
+    memcpy(&header.ANcount, hexResponse, sizeof(header.ANcount));
+    hexResponse += sizeof(header.ANcount);
+
+    memcpy(&header.NScount, hexResponse, sizeof(header.NScount));
+    hexResponse += sizeof(header.NScount);
+
+    memcpy(&header.ARcount, hexResponse, sizeof(header.ARcount));
+    hexResponse += sizeof(header.ARcount);
 }

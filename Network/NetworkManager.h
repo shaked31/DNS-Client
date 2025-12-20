@@ -17,9 +17,7 @@
 
 int networkInit();
 void networkFin();
-int sendPacket(const struct packet packet, const char* ipDst);
-char* recvPacket();
-char* findDnsServerIP();
+char* handlePacket(const struct hexPacket packet);
 
 
 

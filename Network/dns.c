@@ -24,17 +24,11 @@ struct dnsHeader buildHeader() {
      *    Z = 0
      *    RCODE = 0
      */
-    const uint16_t randomID = 0x031; //(uint16_t)rand();
+    const uint16_t randomID = (uint16_t)rand();
 
     const uint16_t flags = htons(0x0100);
     // flags |= (1 << 8); // sets the 8th bit to 1, the rest are 0
     const struct dnsHeader header = {.id = htons(randomID), .flags = flags, .QDcount = htons(1), .ANcount = htons(0), .NScount = htons(0), .ARcount = htons(0)};
-    printf("ID is: %hu\n", header.id);
-    printf("flags are: %u\n", header.flags);
-    printf("QD count is: %u\n", header.QDcount);
-    printf("AN count is: %u\n", header.ANcount);
-    printf("NS count is: %u\n", header.NScount);
-    printf("AR count is: %u\n", header.ARcount);
     return header;
 }
 
@@ -74,11 +68,6 @@ struct Qname buildQname(const char* dnsName) {
 
     free(dnsNameCpy);
 
-    printf("final dns name (query mode) is: \n");
-    for (size_t i=0 ; i< totalSize ; i++) {
-        printf("%02X", (uint8_t)qname[i]);
-    }
-
     printf("\n");
     struct Qname q = {qname, totalSize};
     return q;
@@ -93,11 +82,11 @@ struct dnsQuery buildQuery(const char* dnsName) {
      *  for domain name, Qtype = CNAME = 0x0005
      *  the standard Qclass for A (and AAAA) is the Internet Class - IN. Qclass = IN = 0x0001
      */
-    const uint16_t CNAME = 0x05;
+    const uint16_t A = 0x01;
     const uint16_t INClass = 0x01;
 
 
     const struct Qname qname = buildQname(dnsName);
-    struct dnsQuery query = {.Qname = qname, .Qtype = htons(CNAME), .Qclass = htons(INClass)};
+    struct dnsQuery query = {.Qname = qname, .Qtype = htons(A), .Qclass = htons(INClass)};
     return query;
 }

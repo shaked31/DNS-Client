@@ -22,19 +22,11 @@ int main(void) {
 
     if (fptr == NULL) {
         perror("Sorry, couldn't open file location\n");
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
     char buffer[MAX_LINE_LENGTH];
-    const struct dnsHeader header = buildHeader();
+    struct dnsHeader header;
     struct dnsQuery query;
-
-    char* dnsServerIP = findDnsServerIP();
-    if (strlen(dnsServerIP) == 0) {
-        perror("Couldn't find the DNS Server's IP");
-        return EXIT_FAILURE;
-    }
-
-    printf("Domain Names excepted are:\n");
 
     while (fgets(buffer, sizeof(buffer), fptr) != NULL) { // reads each line
         printf("%s", buffer);
@@ -42,15 +34,15 @@ int main(void) {
         if (newlinePosition != NULL) {
             *newlinePosition = 0x00;
         }
-        query = buildQuery(buffer);
 
-        const struct packet packet = serializeRequest(header, query);
-        sendPacket(packet, dnsServerIP);
+        header = buildHeader(); // in while loop to regenerate random ID
+        query = buildQuery(buffer);
+        const struct hexPacket packet = serializeRequest(header, query);
+        char* response = handlePacket(packet);
         free(packet.packetData);
         free((void*)query.Qname.qname);
 
-        char* buffer = recvPacket();
-
+        printf("");
     }
 
     fclose(fptr);

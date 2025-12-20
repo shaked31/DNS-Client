@@ -7,14 +7,18 @@
 
 #include <stdint.h>
 #include "../Network/dns.h"
+#include <stdint.h>
+
 
 #pragma pack(push, 1)
-struct packet {
-    uint8_t* packetData;
+struct hexPacket {
+    char* packetData;
     size_t packetSize;
 };
 #pragma pack(pop)
 
-struct packet serializeRequest(const struct dnsHeader, const struct dnsQuery);
+
+struct hexPacket serializeRequest(const struct dnsHeader, const struct dnsQuery);
+struct packet deserializeResponse(char* hexResponse);
 
 #endif //DNS_CLIENT_SERIALIZE_H

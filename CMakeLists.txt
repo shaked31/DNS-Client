@@ -9,6 +9,7 @@ add_executable(DNS_Client main.c
         Network/NetworkManager.c
         Network/NetworkManager.h
         Utils/Serializor.c
-        Utils/Serializor.h)
+        Utils/Serializor.h
+)
 
 target_link_libraries(DNS_Client ws2_32)
