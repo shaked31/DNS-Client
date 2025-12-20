@@ -23,7 +23,6 @@ struct hexPacket serializeRequest(const struct dnsHeader header, const struct dn
     char* buffer = malloc(packetSize);
     char* start = buffer;
 
-
     memcpy(buffer, &header.id, sizeof(header.id));
     buffer += sizeof(header.id);
 
@@ -57,6 +56,8 @@ struct hexPacket serializeRequest(const struct dnsHeader header, const struct dn
 
 struct packet deserializeResponse(char* hexResponse) {
     struct dnsHeader header = {0};
+    struct dnsQuery query = {0};
+    struct dnsAnswer answer = {0};
 
     memcpy(&header.id, hexResponse, sizeof(header.id));
     hexResponse += sizeof(header.id);
@@ -75,4 +76,17 @@ struct packet deserializeResponse(char* hexResponse) {
 
     memcpy(&header.ARcount, hexResponse, sizeof(header.ARcount));
     hexResponse += sizeof(header.ARcount);
+
+    query.Qname.qnameLength = strlen(query.Qname.qname)+1;
+
+    memcpy(query.Qname.qname, hexResponse, query.Qname.qnameLength);
+    hexResponse += query.Qname.qnameLength;
+
+    memcpy(&query.Qtype, hexResponse, sizeof(query.Qtype));
+    hexResponse += sizeof(query.Qtype);
+
+    memcpy(&query.Qclass, hexResponse, sizeof(query.Qclass));
+    hexResponse += sizeof(query.Qclass);
+
+
 }

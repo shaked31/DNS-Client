@@ -40,11 +40,22 @@ struct dnsQuery {
 };
 #pragma pack(pop)
 
+#pragma pack(push, 1)
+struct dnsAnswer {
+    char* name;
+    uint16_t type;
+    uint16_t class;
+    uint32_t ttl;
+    uint16_t RDLength;
+    char* RData;
+};
+#pragma pack(pop)
 
 #pragma pack(push, 1)
-struct packet {
+struct responsePacket {
     struct dnsHeader header;
     struct dnsQuery query;
+    struct dnsAnswer answer;
 };
 #pragma pack(pop)
 
