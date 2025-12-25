@@ -9,9 +9,7 @@
 #include <stdlib.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
-
-#include "dns.h"
-#include "../Utils/Serializor.h"
+#include "../include/packet.h"
 
 #define MAX_CMD_OUTPUT_SIZE 256
 #define DNS_PORT 53

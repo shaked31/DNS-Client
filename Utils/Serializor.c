@@ -5,8 +5,6 @@
 #include "Serializor.h"
 
 
-
-
 struct packet serializeRequest(const struct dnsHeader header, const struct dnsQuery query) {
     size_t packetSize =
         sizeof(header.id) +
@@ -100,7 +98,10 @@ int read_name(const char* buf, size_t len, size_t *offset, char **out) {
 }
 
 
-
+/* This function allocates memory to answer.RData
+ * Also it allocates memory to query.Qname.qname and answer.name via read_name
+* Must free it in main.c (as response.answer.RData)
+*/
 struct response deserializeResponse(struct packet hexResponse) {
     struct dnsHeader header = {0};
     struct dnsQuery query = {0};
@@ -110,62 +111,72 @@ struct response deserializeResponse(struct packet hexResponse) {
     char* start = hexResponse.packetData;
     memcpy(&header.id, start + offset, sizeof(header.id));
     offset += sizeof(header.id);
+    header.id = ntohs(header.id);
 
     memcpy(&header.flags, start + offset, sizeof(header.flags));
     offset += sizeof(header.flags);
+    header.flags = ntohs(header.flags);
 
     memcpy(&header.QDcount, start + offset, sizeof(header.QDcount));
     offset += sizeof(header.QDcount);
+    header.QDcount = ntohs(header.QDcount);
 
     memcpy(&header.ANcount, start + offset, sizeof(header.ANcount));
     offset += sizeof(header.ANcount);
+    header.ANcount = ntohs(header.ANcount);
 
     memcpy(&header.NScount, start + offset, sizeof(header.NScount));
     offset += sizeof(header.NScount);
+    header.NScount = ntohs(header.NScount);
 
     memcpy(&header.ARcount, start + offset, sizeof(header.ARcount));
     offset += sizeof(header.ARcount);
+    header.ARcount = ntohs(header.ARcount);
 
     // query.Qname.qnameLength = strlen(query.Qname.qname)+1;
     read_name(start, hexResponse.packetSize, &offset, &query.Qname.qname);
 
-    memcpy(query.Qname.qname, start + offset, query.Qname.qnameLength);
-    offset += query.Qname.qnameLength;
-
     memcpy(&query.Qtype, start + offset, sizeof(query.Qtype));
     offset += sizeof(query.Qtype);
+    query.Qtype = ntohs(query.Qtype);
 
     memcpy(&query.Qclass, start + offset, sizeof(query.Qclass));
     offset += sizeof(query.Qclass);
+    query.Qclass = ntohs(query.Qclass);
 
 
-
-    const uint16_t ancount = ntohs(header.ANcount);
-    // for (size_t i = 0 ; i < ancount ; i++) {
     struct dnsAnswer answer = {0};
     read_name(start, hexResponse.packetSize, &offset, &answer.name);
     // need to free name
 
     if (offset + 10 > hexResponse.packetSize) {
-        perror("Sorry, ran into trouble while deserializing the response");
+        perror("[ERROR] -- Sorry, ran into trouble while deserializing the response");
     }
     memcpy(&answer.type, start + offset, sizeof(answer.type));
     offset += sizeof(answer.type);
+    answer.type = ntohs(answer.type);
 
     memcpy(&answer.class, start + offset, sizeof(answer.type));
     offset += sizeof(answer.class);
+    answer.class = ntohs(answer.class);
 
-    memcpy(&answer.ttl, start + offset, sizeof(answer.type));
+    memcpy(&answer.ttl, start + offset, sizeof(answer.class));
     offset += sizeof(answer.ttl);
+    answer.ttl = ntohl(answer.ttl);
 
-    memcpy(&answer.RDLength, start + offset, sizeof(answer.type));
+    memcpy(&answer.RDLength, start + offset, sizeof(answer.RDLength));
     offset += sizeof(answer.RDLength);
+    answer.RDLength = ntohs(answer.RDLength);
 
     answer.RData = malloc(answer.RDLength);
     memcpy(answer.RData, start + offset, answer.RDLength);
 
     struct response resPack = {header, query, answer};
     return resPack;
-    // }
 }
 
+void freeResponse(struct response *res) {
+    free((void*)res->query.Qname.qname);
+    free(res->answer.name);
+    free(res->answer.RData);
+}
