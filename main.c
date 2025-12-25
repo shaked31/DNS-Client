@@ -16,7 +16,8 @@ int main(void) {
     // char filename[256];
     // fgets(filename, sizeof(filename), stdin);
     // filename[strcspn(filename, "\n")] = '\0';
-    const char* filename = "C:\\Users\\Shaked Pollak\\OneDrive\\Desktop\\DNS-Client\\dns.txt";
+    // const char* filename = "C:\\Users\\Shaked Pollak\\OneDrive\\Desktop\\DNS-Client\\dns.txt";
+    const char* filename = "C:\\Users\\Shaked\\OneDrive\\Desktop\\DNS-Client\\dns.txt";
     FILE *fptr;
     fptr = fopen(filename, "r");
 
@@ -37,12 +38,13 @@ int main(void) {
 
         header = buildHeader(); // in while loop to regenerate random ID
         query = buildQuery(buffer);
-        const struct hexPacket packet = serializeRequest(header, query);
-        char* response = handlePacket(packet);
+        const struct packet packet = serializeRequest(header, query);
+        struct packet response = handlePacket(packet);
+
+        struct response resPack = deserializeResponse(response);
+        printf("%02X", resPack.answer.RData);
         free(packet.packetData);
         free((void*)query.Qname.qname);
-
-        printf("");
     }
 
     fclose(fptr);

@@ -64,7 +64,7 @@ void checkPtonResult(int ptonResult) {
     }
 }
 
-int sendPacket(SOCKET udpSock, const struct hexPacket packet, struct sockaddr_in addr) {
+int sendPacket(SOCKET udpSock, const struct packet packet, struct sockaddr_in addr) {
     if (send(udpSock, packet.packetData, packet.packetSize + 1, 0) < 0) {
         perror("Sorry, couldn't send socket\n");
         closesocket(udpSock);
@@ -76,7 +76,7 @@ int sendPacket(SOCKET udpSock, const struct hexPacket packet, struct sockaddr_in
     return EXIT_SUCCESS;
 }
 
-char* recvPacket(SOCKET udpSock, struct sockaddr_in addr) {
+struct packet recvPacket(SOCKET udpSock, struct sockaddr_in addr) {
     const int BUFFER_SIZE = 4096;
     char* buffer = malloc(BUFFER_SIZE);
 
@@ -85,10 +85,11 @@ char* recvPacket(SOCKET udpSock, struct sockaddr_in addr) {
         perror("Sorry, couldn't receive packet\n");
         exit(EXIT_FAILURE);
     }
-    return buffer;
+    struct packet packet = {.packetData = buffer, .packetSize = bytesRecv};
+    return packet;
 }
 
-char* handlePacket(const struct hexPacket packet) {
+struct packet handlePacket(const struct packet packet) {
     if (strlen(dnsServerIP) == 0) {
         perror("Couldn't find the DNS Server's IP");
         exit(EXIT_FAILURE);
@@ -112,7 +113,7 @@ char* handlePacket(const struct hexPacket packet) {
     }
 
     sendPacket(udpSock, packet, addr);
-    char* response = recvPacket(udpSock, addr);
+    struct packet response = recvPacket(udpSock, addr);
     closesocket(udpSock);
 
     return response;

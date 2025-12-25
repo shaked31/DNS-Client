@@ -11,13 +11,14 @@
 #include <ws2tcpip.h>
 
 #include "dns.h"
+#include "../Utils/Serializor.h"
 
 #define MAX_CMD_OUTPUT_SIZE 256
 #define DNS_PORT 53
 
 int networkInit();
 void networkFin();
-char* handlePacket(const struct hexPacket packet);
+struct packet handlePacket(const struct packet packet);
 
 
 

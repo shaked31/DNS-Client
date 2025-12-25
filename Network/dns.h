@@ -52,7 +52,7 @@ struct dnsAnswer {
 #pragma pack(pop)
 
 #pragma pack(push, 1)
-struct responsePacket {
+struct response {
     struct dnsHeader header;
     struct dnsQuery query;
     struct dnsAnswer answer;
@@ -60,7 +60,7 @@ struct responsePacket {
 #pragma pack(pop)
 
 struct dnsHeader buildHeader();
-struct dnsQuery buildQuery(char* dnsName);
+struct dnsQuery buildQuery(const char* dnsName);
 size_t getQnameLength(char* qname);
 
 #endif //DNS_H
