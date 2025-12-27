@@ -17,35 +17,47 @@
 #define IPv4_BYTES_SIZE 4
 #define MAX_THREADS 256
 
+#define IPv4 1
+#define IPv6 2
+
+struct threadParams {
+    char* line;
+    int protocol;
+};
+
 HANDLE printMutex;
 
-unsigned __stdcall threadFunc(char* line) {
+unsigned __stdcall threadFunc(void* args) {
+
+    struct threadParams* params = (struct threadParams*)args;
+
     struct dnsHeader header = {0};
     struct dnsQuery query = {0};
 
-    // removes the '\n' from the string
-    char* newlinePosition = strchr(line, '\n');
-    if (newlinePosition != NULL) {
-        *newlinePosition = 0x00;
-    }
 
-    WaitForSingleObject(printMutex, INFINITE); // Synchronize printing
 
-    printf("[INFO] -- building a DNS query for %s\n", line);
+
+    // printf("[INFO] -- building a DNS query for %s\n", line);
     header = buildHeader();
-    query = buildQuery(line);
+    query = buildQuery(params->line);
     const struct packet packet = serializeRequest(header, query);
     struct packet response = handlePacket(packet);
 
     struct response resPack = deserializeResponse(response);
-    if (resPack.answer.type == A_TYPE && resPack.answer.RDLength == IPv4_BYTES_SIZE) {
-        uint8_t* ip = (uint8_t*)resPack.answer.RData;
+    WaitForSingleObject(printMutex, INFINITE); // Synchronize printing
 
-        printf("[SUCCESS] -- A record of %s: %u.%u.%u.%u\n\n",line ,ip[0], ip[1], ip[2], ip[3]);
+    printf("[SUCCESS] -- A records of %s:\n", params->line);
+    for (size_t i = 0 ; i < resPack.header.ANcount ; i++) {
+        if (resPack.answers[i].type == A_TYPE && resPack.answers[i].RDLength == IPv4_BYTES_SIZE) {
+            uint8_t* ip = (uint8_t*)resPack.answers[i].RData;
+            printf("%u.%u.%u.%u\n", ip[0], ip[1], ip[2], ip[3]);
+        }
     }
-
     ReleaseMutex(printMutex);
 
+
+
+    free(params->line);
     free(packet.packetData);
     free((void*)query.Qname.qname);
     freeResponse(&resPack);
@@ -60,8 +72,14 @@ int main() {
     // char filename[256];
     // fgets(filename, sizeof(filename), stdin);
     // filename[strcspn(filename, "\n")] = '\0';
-    const char* filename = "C:\\Users\\Shaked Pollak\\OneDrive\\Desktop\\DNS-Client-Master\\dns.txt";
-    // const char* filename = "C:\\Users\\Shaked\\OneDrive\\Desktop\\DNS-Client\\dns.txt";
+
+    printf("Enter the number of internet protocol that you want to resolve: \n(1) IPv4\n(2) IPv6\n");
+    char protocol[2];
+    fgets(protocol, sizeof(protocol), stdin);
+    int protocolChoise = atoi(protocol);
+
+    // const char* filename = "C:\\Users\\Shaked Pollak\\OneDrive\\Desktop\\DNS-Client-Master\\dns.txt";
+    const char* filename = "C:\\Users\\Shaked\\OneDrive\\Desktop\\DNS-Client\\dns.txt";
     FILE *fptr;
     fptr = fopen(filename, "r");
 
@@ -69,19 +87,29 @@ int main() {
         perror("[ERROR] -- Sorry, couldn't open file location\n");
         exit(EXIT_FAILURE);
     }
-    char line[MAX_LINE_LENGTH];
 
+    char line[MAX_LINE_LENGTH];
 
     printMutex = CreateMutex(NULL, FALSE, NULL);
     HANDLE hThreads[MAX_THREADS];
     int countThreads = 0;
     while (fgets(line, sizeof(line), fptr) != NULL) { // reads each line
 
+        // removes the '\n' from the string
+        line[strcspn(line, "\n")] = '\0';
+        // char* newlinePosition = strchr(line, '\n');
+        // if (newlinePosition != NULL) {
+        //     *newlinePosition = 0x00;
+        // }
+
         unsigned int threadID;
 
-        char* lineCpy = malloc(strlen(line));
-        strcpy(lineCpy, line);
-        hThreads[countThreads] = (HANDLE)_beginthreadex(NULL, 0, threadFunc, lineCpy, 0, &threadID);
+        struct threadParams* params = malloc(sizeof(struct threadParams));
+        params->line = malloc(strlen(line) + 1);
+        strcpy(params->line, line);
+        params->protocol = protocolChoise;
+
+        hThreads[countThreads] = (HANDLE)_beginthreadex(NULL, 0, threadFunc, (void*)params, 0, &threadID);
         if (hThreads == NULL) {
             perror("[ERROR] -- Couldn't create thread\n");
             exit(EXIT_FAILURE);

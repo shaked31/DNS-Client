@@ -87,9 +87,9 @@ int read_name(const char* buf, size_t len, size_t *offset, char **out) {
     if (out_len > 0) temp[out_len - 1] = '\0'; // remove last dot
     else temp[0] = '\0';
 
-    *out = malloc(out_len);
+    *out = malloc(out_len + 1);
     if (!*out) return -1;
-    memcpy(*out, temp, out_len);
+    memcpy(*out, temp, out_len + 1);
 
     if (!jumped) *offset = pos;
     else *offset += 2; // pointer consumes 2 bytes
@@ -102,6 +102,7 @@ int read_name(const char* buf, size_t len, size_t *offset, char **out) {
  * Also it allocates memory to query.Qname.qname and answer.name via read_name
 * Must free it in main.c (as response.answer.RData)
 */
+
 struct response deserializeResponse(struct packet hexResponse) {
     struct dnsHeader header = {0};
     struct dnsQuery query = {0};
@@ -145,38 +146,44 @@ struct response deserializeResponse(struct packet hexResponse) {
     query.Qclass = ntohs(query.Qclass);
 
 
-    struct dnsAnswer answer = {0};
-    read_name(start, hexResponse.packetSize, &offset, &answer.name);
+    struct dnsAnswer* answers = malloc(sizeof(struct dnsAnswer) * header.ANcount);
+
     // need to free name
+    for (size_t i = 0 ; i < header.ANcount ; i++) {
+        // if (offset + answerSize > hexResponse.packetSize) {
+        //     perror("[ERROR] -- Sorry, ran into trouble while deserializing the response");
+        // }
+        read_name(start, hexResponse.packetSize, &offset, &answers[i].name);
 
-    if (offset + 10 > hexResponse.packetSize) {
-        perror("[ERROR] -- Sorry, ran into trouble while deserializing the response");
+        memcpy(&answers[i].type, start + offset, sizeof(answers[i].type));
+        offset += sizeof(answers[i].type);
+        answers[i].type = ntohs(answers[i].type);
+
+        memcpy(&answers[i].class, start + offset, sizeof(answers[i].class));
+        offset += sizeof(answers[i].class);
+        answers[i].class = ntohs(answers[i].class);
+
+        memcpy(&answers[i].ttl, start + offset, sizeof(answers[i].ttl));
+        offset += sizeof(answers[i].ttl);
+        answers[i].ttl = ntohl(answers[i].ttl);
+
+        memcpy(&answers[i].RDLength, start + offset, sizeof(answers[i].RDLength));
+        offset += sizeof(answers[i].RDLength);
+        answers[i].RDLength = ntohs(answers[i].RDLength);
+
+        answers[i].RData = malloc(answers[i].RDLength);
+        memcpy(answers[i].RData, start + offset, answers[i].RDLength);
+        offset += answers[i].RDLength;
     }
-    memcpy(&answer.type, start + offset, sizeof(answer.type));
-    offset += sizeof(answer.type);
-    answer.type = ntohs(answer.type);
 
-    memcpy(&answer.class, start + offset, sizeof(answer.type));
-    offset += sizeof(answer.class);
-    answer.class = ntohs(answer.class);
-
-    memcpy(&answer.ttl, start + offset, sizeof(answer.class));
-    offset += sizeof(answer.ttl);
-    answer.ttl = ntohl(answer.ttl);
-
-    memcpy(&answer.RDLength, start + offset, sizeof(answer.RDLength));
-    offset += sizeof(answer.RDLength);
-    answer.RDLength = ntohs(answer.RDLength);
-
-    answer.RData = malloc(answer.RDLength);
-    memcpy(answer.RData, start + offset, answer.RDLength);
-
-    struct response resPack = {header, query, answer};
+    struct response resPack = {header, query, answers};
     return resPack;
 }
 
 void freeResponse(struct response *res) {
     free((void*)res->query.Qname.qname);
-    free(res->answer.name);
-    free(res->answer.RData);
+    for (size_t i = 0 ; i < res->header.ANcount ; i++) {
+        free(res->answers[i].name);
+        free(res->answers[i].RData);
+    }
 }

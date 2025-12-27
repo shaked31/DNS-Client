@@ -55,7 +55,7 @@ struct dnsAnswer {
 struct response {
     struct dnsHeader header;
     struct dnsQuery query;
-    struct dnsAnswer answer;
+    struct dnsAnswer* answers;
 };
 #pragma pack(pop)
 

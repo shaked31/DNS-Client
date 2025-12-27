@@ -74,7 +74,7 @@ int sendPacket(const SOCKET udpSock, const struct packet packet, struct sockaddr
         exit(EXIT_FAILURE);
     }
 
-    printf("[SUCCESS] -- The socket is sent successfully!\n");
+    // printf("[SUCCESS] -- The socket is sent successfully!\n");
     return EXIT_SUCCESS;
 }
 
