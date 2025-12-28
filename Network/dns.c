@@ -5,6 +5,7 @@
 #include "../include/dns.h"
 
 #include <stdio.h>
+#define _CRT_RAND_S
 #include <stdlib.h>
 #include <string.h>
 #include <winsock2.h>
@@ -22,7 +23,8 @@ struct dnsHeader buildHeader() {
      *    Z = 0
      *    RCODE = 0
      */
-    const uint16_t randomID = (uint16_t)rand();
+    uint16_t randomID;
+    rand_s(&randomID);
 
     const uint16_t flags = htons(0x0100);
     // flags |= (1 << 8); // sets the 8th bit to 1, the rest are 0
@@ -73,7 +75,7 @@ struct Qname buildQname(const char* dnsName) {
     return q;
 }
 
-struct dnsQuery buildQuery(const char* dnsName) {
+struct dnsQuery buildQuery(const char* dnsName, int protocol) {
     /*
      *  Qname - Query Name
      *  Qtype - Type Of Query
@@ -82,11 +84,17 @@ struct dnsQuery buildQuery(const char* dnsName) {
      *  for domain name, Qtype = CNAME = 0x0005
      *  the standard Qclass for A (and AAAA) is the Internet Class - IN. Qclass = IN = 0x0001
      */
-    const uint16_t A = 0x01;
+    uint16_t qtype = 0;
+
+    if (protocol == IPv4OPTION)
+        qtype = IPv4TYPE;
+    else if (protocol == IPv6OPTION)
+        qtype = IPv6TYPE;
+
     const uint16_t INClass = 0x01;
 
 
     const struct Qname qname = buildQname(dnsName);
-    struct dnsQuery query = {.Qname = qname, .Qtype = htons(A), .Qclass = htons(INClass)};
+    struct dnsQuery query = {.Qname = qname, .Qtype = htons(qtype), .Qclass = htons(INClass)};
     return query;
 }

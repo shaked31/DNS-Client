@@ -1,6 +1,9 @@
+#include <inttypes.h>
+
 #include "include/dns.h"
 #include "Utils/Serializor.h"
 #include "Network/NetworkManager.h"
+#include "include/packet.h"
 
 
 #include <stdio.h>
@@ -8,17 +11,20 @@
 #include <string.h>
 #include <windows.h>
 #include <process.h>
+#include <time.h>
 
 
 #define MAX_FILENAME_LENGTH 256
-#define MAX_LINE_LENGTH 16
+#define MAX_LINE_LENGTH 64
 
 #define A_TYPE 1
+#define AAAA_TYPE 28
 #define IPv4_BYTES_SIZE 4
+#define IPv6_BYTES_SIZE 16
+
 #define MAX_THREADS 256
 
-#define IPv4 1
-#define IPv6 2
+
 
 struct threadParams {
     char* line;
@@ -30,32 +36,45 @@ HANDLE printMutex;
 unsigned __stdcall threadFunc(void* args) {
 
     struct threadParams* params = (struct threadParams*)args;
-
     struct dnsHeader header = {0};
     struct dnsQuery query = {0};
 
-
-
-
-    // printf("[INFO] -- building a DNS query for %s\n", line);
     header = buildHeader();
-    query = buildQuery(params->line);
+    printf("header.id is %" PRIu16 "\n", header.id);
+    query = buildQuery(params->line, params->protocol);
     const struct packet packet = serializeRequest(header, query);
-    struct packet response = handlePacket(packet);
+
+    struct packet response = handlePacket(packet, params->protocol);
 
     struct response resPack = deserializeResponse(response);
     WaitForSingleObject(printMutex, INFINITE); // Synchronize printing
 
-    printf("[SUCCESS] -- A records of %s:\n", params->line);
+    if (params->protocol == IPv4OPTION && resPack.header.ANcount > 0)
+        printf("[SUCCESS] -- A records of %s:\n", params->line);
+    else if (params->protocol == IPv6OPTION && resPack.header.ANcount > 0)
+        printf("[SUCCESS] -- AAAA records of %s:\n", params->line);
+    else if (params->protocol == IPv4OPTION && resPack.header.ANcount == 0)
+        printf("[ERROR] -- There Is No A records of %s:\n", params->line);
+    else if (params->protocol == IPv6OPTION && resPack.header.ANcount == 0)
+        printf("[ERROR] -- There Is No AAAA records of %s:\n", params->line);
+
     for (size_t i = 0 ; i < resPack.header.ANcount ; i++) {
         if (resPack.answers[i].type == A_TYPE && resPack.answers[i].RDLength == IPv4_BYTES_SIZE) {
             uint8_t* ip = (uint8_t*)resPack.answers[i].RData;
             printf("%u.%u.%u.%u\n", ip[0], ip[1], ip[2], ip[3]);
         }
+        if (resPack.answers[i].type == AAAA_TYPE && resPack.answers[i].RDLength == IPv6_BYTES_SIZE) {
+            uint8_t* ip = (uint8_t*)resPack.answers[i].RData;
+            for (size_t j = 0 ; j < IPv6_BYTES_SIZE ; j += 2) {
+                printf("%02X%02X", ip[j], ip[j+1]);
+                if (j < IPv6_BYTES_SIZE - 2) {
+                    printf(":");
+                }
+            }
+            printf("\n");
+        }
     }
     ReleaseMutex(printMutex);
-
-
 
     free(params->line);
     free(packet.packetData);
@@ -77,6 +96,10 @@ int main() {
     char protocol[2];
     fgets(protocol, sizeof(protocol), stdin);
     int protocolChoise = atoi(protocol);
+    if (protocolChoise != IPv4OPTION && protocolChoise != IPv6OPTION) {
+        perror("Must choose a valid option!");
+        exit(EXIT_FAILURE);
+    }
 
     // const char* filename = "C:\\Users\\Shaked Pollak\\OneDrive\\Desktop\\DNS-Client-Master\\dns.txt";
     const char* filename = "C:\\Users\\Shaked\\OneDrive\\Desktop\\DNS-Client\\dns.txt";
@@ -94,16 +117,9 @@ int main() {
     HANDLE hThreads[MAX_THREADS];
     int countThreads = 0;
     while (fgets(line, sizeof(line), fptr) != NULL) { // reads each line
-
-        // removes the '\n' from the string
         line[strcspn(line, "\n")] = '\0';
-        // char* newlinePosition = strchr(line, '\n');
-        // if (newlinePosition != NULL) {
-        //     *newlinePosition = 0x00;
-        // }
 
         unsigned int threadID;
-
         struct threadParams* params = malloc(sizeof(struct threadParams));
         params->line = malloc(strlen(line) + 1);
         strcpy(params->line, line);

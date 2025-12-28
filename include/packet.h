@@ -7,6 +7,10 @@
 
 #include <stddef.h>
 
+#define IPv4OPTION 1
+#define IPv6OPTION 2
+
+
 #pragma pack(push, 1)
 struct packet {
     char* packetData;

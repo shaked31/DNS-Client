@@ -16,8 +16,6 @@
 
 int networkInit();
 void networkFin();
-struct packet handlePacket(const struct packet packet);
-
-
+struct packet handlePacket(const struct packet packet, int protocol);
 
 #endif //NETWORKMANAGER_H

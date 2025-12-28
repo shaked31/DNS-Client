@@ -2,15 +2,18 @@
 // Created by Shaked Pollak on 11/7/2025.
 //
 
-#include <stdint.h>
 
 #ifndef DNS_H
 #define DNS_H
 
+#include <stdint.h>
+#include "packet.h"
+
 #define MAX_FILENAME_LENGTH 256
 #define MAX_LINE_LENGTH 16
 
-
+#define IPv4TYPE 1
+#define IPv6TYPE 28
 
 #pragma pack(push, 1)
 struct dnsHeader {
@@ -60,7 +63,7 @@ struct response {
 #pragma pack(pop)
 
 struct dnsHeader buildHeader();
-struct dnsQuery buildQuery(const char* dnsName);
+struct dnsQuery buildQuery(const char* dnsName, int protocol);
 size_t getQnameLength(char* qname);
 
 #endif //DNS_H

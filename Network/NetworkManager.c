@@ -92,7 +92,7 @@ struct packet recvPacket(const SOCKET udpSock, struct sockaddr_in addr) {
     return packet;
 }
 
-struct packet handlePacket(const struct packet packet) {
+struct packet handlePacket(const struct packet packet, int protocol) {
     if (strlen(dnsServerIP) == 0) {
         perror("[ERROR] -- Couldn't find the DNS Server's IP");
         exit(EXIT_FAILURE);
