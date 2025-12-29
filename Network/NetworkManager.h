@@ -5,6 +5,7 @@
 #ifndef NETWORKMANAGER_H
 #define NETWORKMANAGER_H
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <winsock2.h>
@@ -16,6 +17,6 @@
 
 int networkInit();
 void networkFin();
-struct packet handlePacket(const struct packet packet, int protocol);
+struct packet handlePacket(const struct packet packet, uint32_t threadID);
 
 #endif //NETWORKMANAGER_H

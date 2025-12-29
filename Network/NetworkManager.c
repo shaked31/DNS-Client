@@ -4,6 +4,10 @@
 
 #include "NetworkManager.h"
 
+#include <inttypes.h>
+#include <stdint.h>
+#include <time.h>
+
 char* dnsServerIP = NULL;
 
 // This function allocates memory to IPstr, and frees it in NetworkFin()
@@ -21,7 +25,7 @@ char* findDnsServerIP() {
             int subStrLen = strlen(ptrToIP);
             char* IPstr = (char*)malloc(subStrLen + 1);
             strcpy(IPstr, ptrToIP);
-            printf("[INFO] -- The Local DNS Server IP is: %s\n\n", IPstr);
+            printf("[INFO] -- The local DNS server IP is: %s\n\n", IPstr);
             _pclose(fptr);
             return IPstr;
         }
@@ -79,12 +83,16 @@ int sendPacket(const SOCKET udpSock, const struct packet packet, struct sockaddr
 }
 
 // This function allocates memory to buffer, must free it as packet.packetData in main.c
-struct packet recvPacket(const SOCKET udpSock, struct sockaddr_in addr) {
+struct packet recvPacket(const SOCKET udpSock) {
     const int BUFFER_SIZE = 4096;
     char* buffer = malloc(BUFFER_SIZE);
 
     int bytesRecv = recv(udpSock, buffer, BUFFER_SIZE, 0);
     if (bytesRecv == SOCKET_ERROR) {
+        if (WSAGetLastError() == WSAETIMEDOUT) {
+            struct packet packet = {.packetData = NULL, .packetSize = bytesRecv};
+            return packet;
+        }
         perror("[ERROR] -- Sorry, couldn't receive packet\n");
         exit(EXIT_FAILURE);
     }
@@ -92,9 +100,9 @@ struct packet recvPacket(const SOCKET udpSock, struct sockaddr_in addr) {
     return packet;
 }
 
-struct packet handlePacket(const struct packet packet, int protocol) {
+struct packet handlePacket(const struct packet packet, uint32_t threadID) {
     if (strlen(dnsServerIP) == 0) {
-        perror("[ERROR] -- Couldn't find the DNS Server's IP");
+        printf("[ERROR] -- Couldn't find the DNS Server's IP -- Thread ID %"PRIu32"\n", threadID);
         exit(EXIT_FAILURE);
     }
 
@@ -102,24 +110,34 @@ struct packet handlePacket(const struct packet packet, int protocol) {
     int ptonResult = inet_pton(AF_INET, dnsServerIP, &(addr.sin_addr));
     checkPtonResult(ptonResult);
 
+    size_t countTimeouts = 0;
+    uint32_t timeouts[5] = {1000, 2000, 4000, 8000, 10000};
     SOCKET udpSock = socket(AF_INET, SOCK_DGRAM, 0);
-
     if (udpSock == INVALID_SOCKET) {
-        perror("[ERROR] -- Sorry, couldn't create socket\n");
+        printf("[ERROR] -- Sorry, couldn't create socket\n -- Thread ID %"PRIu32"\n", threadID);
         WSACleanup();
         exit(EXIT_FAILURE);
     }
 
     if (connect(udpSock, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
-        perror("[ERROR] -- Sorry, couldn't connect to local DNS server");
+        printf("[ERROR] -- Sorry, couldn't connect to local DNS server -- Thread ID %"PRIu32"\n", threadID);
         exit(EXIT_FAILURE);
     }
-
-    sendPacket(udpSock, packet, addr);
-    struct packet response = recvPacket(udpSock, addr);
+    struct packet response = {0};
+    while (countTimeouts < sizeof(timeouts) / sizeof(timeouts[0])) {
+        setsockopt(udpSock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeouts[countTimeouts], sizeof(timeouts[countTimeouts]));
+        sendPacket(udpSock, packet, addr);
+        response = recvPacket(udpSock);
+        if (response.packetData != NULL) {
+            closesocket(udpSock);
+            return response;
+        }
+        printf("[ERROR] -- DNS response didnt arrive after %" PRIu32" seconds, sending another query -- Thread ID %"PRIu32"\n", timeouts[countTimeouts]/1000, threadID);
+        countTimeouts++;
+    }
+    printf("[ERROR] -- After multipule retries, didn't receive any response -- Thread ID %"PRIu32"\n", threadID);
     closesocket(udpSock);
-
-    return response;
+    return response; // when response.packetData == NULL
 }
 
 

@@ -24,11 +24,11 @@ struct dnsHeader buildHeader() {
      *    RCODE = 0
      */
     uint16_t randomID;
-    rand_s(&randomID);
+    rand_s(&randomID); // safe for threads
 
-    const uint16_t flags = htons(0x0100);
+    const uint16_t flags = 1;  // sets the 8th bit to 1, the rest are 0
     // flags |= (1 << 8); // sets the 8th bit to 1, the rest are 0
-    const struct dnsHeader header = {.id = htons(randomID), .flags = flags, .QDcount = htons(1), .ANcount = htons(0), .NScount = htons(0), .ARcount = htons(0)};
+    const struct dnsHeader header = {.id = htons(randomID), .flags = htons(flags), .QDcount = htons(1), .ANcount = htons(0), .NScount = htons(0), .ARcount = htons(0)};
     return header;
 }
 

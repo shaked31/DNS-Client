@@ -9,9 +9,6 @@
 #include <stdint.h>
 #include "packet.h"
 
-#define MAX_FILENAME_LENGTH 256
-#define MAX_LINE_LENGTH 16
-
 #define IPv4TYPE 1
 #define IPv6TYPE 28
 
