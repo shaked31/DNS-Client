@@ -5,22 +5,16 @@
 #ifndef DNS_CLIENT_SERIALIZE_H
 #define DNS_CLIENT_SERIALIZE_H
 
-#include "../Network/dns.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <winsock2.h>
-
-#pragma pack(push, 1)
-struct packet {
-    char* packetData;
-    size_t packetSize;
-};
-#pragma pack(pop)
-
+#include "../include/packet.h"
+#include "../include/dns.h"
 
 struct packet serializeRequest(const struct dnsHeader, const struct dnsQuery);
 struct response deserializeResponse(struct packet hexResponse);
+void freeResponse(struct response *res);
 
 #endif //DNS_CLIENT_SERIALIZE_H

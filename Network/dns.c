@@ -2,14 +2,13 @@
 // Created by Shaked Pollak on 11/7/2025.
 //
 
-#include "dns.h"
+#include "../include/dns.h"
 
 #include <stdio.h>
+#define _CRT_RAND_S
 #include <stdlib.h>
 #include <string.h>
-
-#include "NetworkManager.h"
-#include "../Utils/Serializor.h"
+#include <winsock2.h>
 
 
 struct dnsHeader buildHeader() {
@@ -24,14 +23,19 @@ struct dnsHeader buildHeader() {
      *    Z = 0
      *    RCODE = 0
      */
-    const uint16_t randomID = (uint16_t)rand();
+    uint16_t randomID;
+    rand_s(&randomID); // safe for threads
 
-    const uint16_t flags = htons(0x0100);
+    const uint16_t flags = 1;  // sets the 8th bit to 1, the rest are 0
     // flags |= (1 << 8); // sets the 8th bit to 1, the rest are 0
-    const struct dnsHeader header = {.id = htons(randomID), .flags = flags, .QDcount = htons(1), .ANcount = htons(0), .NScount = htons(0), .ARcount = htons(0)};
+    const struct dnsHeader header = {.id = htons(randomID), .flags = htons(flags), .QDcount = htons(1), .ANcount = htons(0), .NScount = htons(0), .ARcount = htons(0)};
     return header;
 }
 
+/* This function allocates memory to qname and dnsNameCpy
+ * it frees dnsNameCpy inside the function
+ * must free qname in main.c
+ */
 struct Qname buildQname(const char* dnsName) {
     char* dnsNameCpy = malloc(strlen(dnsName)+1); // plus 1 for the null terminator
     strcpy_s(dnsNameCpy, strlen(dnsName)+1, dnsName);
@@ -44,13 +48,12 @@ struct Qname buildQname(const char* dnsName) {
     char* currentLabel = strtok(dnsNameCpy, ".");
 
     while (currentLabel != NULL) {
-        printf("token is: %s\n", currentLabel);
         size_t currentLabelLen = strlen(currentLabel);
         totalSize += (currentLabelLen + 1);
         char* temp = realloc(qname, totalSize);
 
         if (temp == NULL) {
-            printf("Couldn't reallocate memory, exiting...\n");
+            printf("[ERROR] -- Couldn't reallocate memory, exiting...\n");
             free(qname);
             free(dnsNameCpy);
             exit(EXIT_FAILURE);
@@ -68,12 +71,11 @@ struct Qname buildQname(const char* dnsName) {
 
     free(dnsNameCpy);
 
-    printf("\n");
     struct Qname q = {qname, totalSize};
     return q;
 }
 
-struct dnsQuery buildQuery(const char* dnsName) {
+struct dnsQuery buildQuery(const char* dnsName, int protocol) {
     /*
      *  Qname - Query Name
      *  Qtype - Type Of Query
@@ -82,11 +84,17 @@ struct dnsQuery buildQuery(const char* dnsName) {
      *  for domain name, Qtype = CNAME = 0x0005
      *  the standard Qclass for A (and AAAA) is the Internet Class - IN. Qclass = IN = 0x0001
      */
-    const uint16_t A = 0x01;
+    uint16_t qtype = 0;
+
+    if (protocol == IPv4OPTION)
+        qtype = IPv4TYPE;
+    else if (protocol == IPv6OPTION)
+        qtype = IPv6TYPE;
+
     const uint16_t INClass = 0x01;
 
 
     const struct Qname qname = buildQname(dnsName);
-    struct dnsQuery query = {.Qname = qname, .Qtype = htons(A), .Qclass = htons(INClass)};
+    struct dnsQuery query = {.Qname = qname, .Qtype = htons(qtype), .Qclass = htons(INClass)};
     return query;
 }
