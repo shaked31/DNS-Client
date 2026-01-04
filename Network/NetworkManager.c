@@ -4,9 +4,6 @@
 
 #include "NetworkManager.h"
 
-#include <inttypes.h>
-#include <stdint.h>
-#include <time.h>
 
 char* dnsServerIP = NULL;
 
@@ -34,6 +31,7 @@ char* findDnsServerIP() {
     return "";
 }
 
+// details inside the function
 int networkInit() {
     struct WSAData wsaData;
     if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
@@ -77,12 +75,10 @@ int sendPacket(const SOCKET udpSock, const struct packet packet, struct sockaddr
         WSACleanup();
         exit(EXIT_FAILURE);
     }
-
-    // printf("[SUCCESS] -- The socket is sent successfully!\n");
     return EXIT_SUCCESS;
 }
 
-// This function allocates memory to buffer, must free it as packet.packetData in main.c
+// This function allocates memory to buffer, released as packet.packetData in main.c in cleanup label
 struct packet recvPacket(const SOCKET udpSock) {
     const int BUFFER_SIZE = 4096;
     char* buffer = malloc(BUFFER_SIZE);
@@ -132,12 +128,12 @@ struct packet handlePacket(const struct packet packet, uint32_t threadID) {
             closesocket(udpSock);
             return response;
         }
-        printf("[ERROR] -- DNS response didnt arrive after %" PRIu32" seconds, sending another query -- Thread ID %"PRIu32"\n", timeouts[countTimeouts]/1000, threadID);
+        printf("[ERROR] -- DNS response didn't arrive after %" PRIu32" seconds, sending another query -- Thread ID %"PRIu32"\n", timeouts[countTimeouts]/1000, threadID);
         countTimeouts++;
     }
-    printf("[ERROR] -- After multipule retries, didn't receive any response -- Thread ID %"PRIu32"\n", threadID);
+    printf("[ERROR] -- After multiple retries, didn't receive any response -- Thread ID %"PRIu32"\n", threadID);
     closesocket(udpSock);
-    return response; // when response.packetData == NULL
+    return response; // after all timeouts and retries when response.packetData == NULL
 }
 
 

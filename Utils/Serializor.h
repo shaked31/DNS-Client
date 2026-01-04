@@ -14,7 +14,7 @@
 #include "../include/dns.h"
 
 struct packet serializeRequest(const struct dnsHeader, const struct dnsQuery);
-struct response deserializeResponse(struct packet hexResponse);
+struct response deserializeResponse(struct packet packet);
 void freeResponse(struct response *res);
 
 #endif //DNS_CLIENT_SERIALIZE_H

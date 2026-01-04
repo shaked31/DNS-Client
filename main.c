@@ -41,26 +41,63 @@ unsigned __stdcall threadFunc(void* args) {
     header = buildHeader();
     printf("[INFO] -- Working on thread ID %"PRIu32" for %s\n", threadID, params->line);
     query = buildQuery(params->line, params->protocol);
+
     const struct packet packet = serializeRequest(header, query);
-
     struct packet response = handlePacket(packet, threadID);
-
     struct response resPack = deserializeResponse(response);
+
     WaitForSingleObject(printMutex, INFINITE); // Synchronize printing
 
-    if (ntohs(header.id) != resPack.header.id) {
+    const uint8_t resQR = (resPack.header.flags >> 15) & 0x1;
+    const uint8_t resRCODE = resPack.header.flags & 0x0F;
+
+    int status = EXIT_SUCCESS;
+
+    if (ntohs(header.id) != resPack.header.id || resQR == 0) {
         printf("[ERROR] -- Wrong packet received\n");
-        _endthreadex(EXIT_FAILURE);
+        status = EXIT_FAILURE;
+        goto cleanup;
+    }
+
+    switch (resRCODE) {
+        case 1:
+            printf("[ERROR] -- Invalid DNS message\n");
+            status = EXIT_FAILURE;
+            goto cleanup;
+        case 2:
+            printf("[ERROR] -- Server failed\n");
+            status = EXIT_FAILURE;
+            goto cleanup;
+        case 3:
+            printf("[ERROR] -- Domain name (%s) doesn't exist\n", params->line);
+            status = EXIT_FAILURE;
+            goto cleanup;
+        case 4:
+            printf("[ERROR] -- Server can't implement the request (not supported OpCode)\n");
+            status = EXIT_FAILURE;
+            goto cleanup;
+        case 5:
+            printf("[ERROR] -- Server refused the query\n");
+            status = EXIT_FAILURE;
+            goto cleanup;
+        default:
+            break; // query completed
     }
 
     if (params->protocol == IPv4OPTION && resPack.header.ANcount > 0)
         printf("[SUCCESS] -- A records of %s:\n", params->line);
     else if (params->protocol == IPv6OPTION && resPack.header.ANcount > 0)
         printf("[SUCCESS] -- AAAA records of %s:\n", params->line);
-    else if (params->protocol == IPv4OPTION && resPack.header.ANcount == 0)
+    else if (params->protocol == IPv4OPTION && resPack.header.ANcount == 0) {
         printf("[ERROR] -- There is No A records of %s\n", params->line);
-    else if (params->protocol == IPv6OPTION && resPack.header.ANcount == 0)
+        status = EXIT_FAILURE;
+        goto cleanup;
+    }
+    else if (params->protocol == IPv6OPTION && resPack.header.ANcount == 0) {
         printf("[ERROR] -- There is No AAAA records of %s\n", params->line);
+        status = EXIT_FAILURE;
+        goto cleanup;
+    }
 
     for (size_t i = 0 ; i < resPack.header.ANcount ; i++) {
         if (resPack.answers[i].type == A_TYPE && resPack.answers[i].RDLength == IPv4_BYTES_SIZE) {
@@ -78,32 +115,24 @@ unsigned __stdcall threadFunc(void* args) {
             printf("\n");
         }
     }
-    ReleaseMutex(printMutex);
 
-    free(params->line);
-    free(params);
-    free(packet.packetData);
-    free((void*)query.Qname.qname);
-    freeResponse(&resPack);
-    _endthreadex(EXIT_SUCCESS); // ends the thread (optional because it happens automatically when the function returns)
+    cleanup: // runs anyway if reaches here
+        ReleaseMutex(printMutex);
+        free(params->line);
+        free(params);
+        free(packet.packetData);
+        free((void*)query.Qname.qname);
+        freeResponse(&resPack);
+        _endthreadex(status); // ends the thread (optional because it happens automatically when the function returns)
 }
 
 int main() {
     networkInit();
 
     printf("Hello!\nEnter TXT File Location\n");
-    char filename[256];
+    char filename[MAX_FILENAME_LENGTH];
     fgets(filename, sizeof(filename), stdin);
     filename[strcspn(filename, "\n")] = '\0';
-
-    printf("Enter the number of internet protocol that you want to resolve: \n(1) IPv4\n(2) IPv6\n");
-    char protocol[2];
-    fgets(protocol, sizeof(protocol), stdin);
-    int protocolChoise = atoi(protocol);
-    if (protocolChoise != IPv4OPTION && protocolChoise != IPv6OPTION) {
-        printf("[ERROR] -- Must choose a valid option!");
-        exit(EXIT_FAILURE);
-    }
 
     FILE *fptr;
     fptr = fopen(filename, "r");
@@ -115,6 +144,15 @@ int main() {
 
     char line[MAX_LINE_LENGTH];
 
+    printf("Enter the number of internet protocol that you want to resolve: \n(1) IPv4\n(2) IPv6\n");
+    char protocol[2];
+    fgets(protocol, sizeof(protocol), stdin);
+    int protocolChoice = atoi(protocol);
+    if (protocolChoice != IPv4OPTION && protocolChoice != IPv6OPTION) {
+        printf("[ERROR] -- Must choose a valid option!");
+        exit(EXIT_FAILURE);
+    }
+
     printMutex = CreateMutex(NULL, FALSE, NULL);
     HANDLE hThreads[MAX_THREADS];
     int countThreads = 0;
@@ -122,13 +160,13 @@ int main() {
         line[strcspn(line, "\n")] = '\0';
 
         unsigned int threadID;
-        struct threadParams* params = malloc(sizeof(struct threadParams));
-        params->line = malloc(strlen(line) + 1);
+        struct threadParams* params = malloc(sizeof(struct threadParams)); // released in threadFunc
+        params->line = malloc(strlen(line) + 1); // released in threadFunc
         strcpy(params->line, line);
-        params->protocol = protocolChoise;
+        params->protocol = protocolChoice;
 
         hThreads[countThreads] = (HANDLE)_beginthreadex(NULL, 0, threadFunc, (void*)params, 0, &threadID);
-        if (hThreads[countThreads] == 0) {
+        if (hThreads[countThreads] == 0) { // _beginthreadex returns 0 if fails
             printf("[ERROR] -- Couldn't create thread\n");
             free(params->line);
             free(params);

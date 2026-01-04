@@ -26,7 +26,7 @@ struct dnsHeader {
 
 #pragma pack(push, 1)
 struct Qname {
-    const char* qname;
+    char* qname;
     size_t qnameLength;
 };
 #pragma pack(pop)
