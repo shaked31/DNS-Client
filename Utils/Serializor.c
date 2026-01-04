@@ -103,13 +103,13 @@ int read_name(const char* buf, size_t len, size_t *offset, char **out) {
 * Must free it in main.c (as response.answer.RData)
 */
 
-struct response deserializeResponse(struct packet hexResponse) {
+struct response deserializeResponse(struct packet packet) {
     struct dnsHeader header = {0};
     struct dnsQuery query = {0};
 
     size_t offset = 0;
 
-    char* start = hexResponse.packetData;
+    char* start = packet.packetData;
     memcpy(&header.id, start + offset, sizeof(header.id));
     offset += sizeof(header.id);
     header.id = ntohs(header.id);
@@ -135,7 +135,7 @@ struct response deserializeResponse(struct packet hexResponse) {
     header.ARcount = ntohs(header.ARcount);
 
     // query.Qname.qnameLength = strlen(query.Qname.qname)+1;
-    read_name(start, hexResponse.packetSize, &offset, &query.Qname.qname);
+    read_name(start, packet.packetSize, &offset, &query.Qname.qname);
 
     memcpy(&query.Qtype, start + offset, sizeof(query.Qtype));
     offset += sizeof(query.Qtype);
@@ -148,12 +148,9 @@ struct response deserializeResponse(struct packet hexResponse) {
 
     struct dnsAnswer* answers = malloc(sizeof(struct dnsAnswer) * header.ANcount);
 
-    // need to free name
+    // release answers[i].name and answers[i].RData in freeResponse
     for (size_t i = 0 ; i < header.ANcount ; i++) {
-        // if (offset + answerSize > hexResponse.packetSize) {
-        //     perror("[ERROR] -- Sorry, ran into trouble while deserializing the response");
-        // }
-        read_name(start, hexResponse.packetSize, &offset, &answers[i].name);
+        read_name(start, packet.packetSize, &offset, &answers[i].name);
 
         memcpy(&answers[i].type, start + offset, sizeof(answers[i].type));
         offset += sizeof(answers[i].type);
@@ -186,4 +183,5 @@ void freeResponse(struct response *res) {
         free(res->answers[i].name);
         free(res->answers[i].RData);
     }
+    free(res->answers);
 }

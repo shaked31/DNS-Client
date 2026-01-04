@@ -6,6 +6,7 @@
 #define NETWORKMANAGER_H
 
 #include <stdint.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <winsock2.h>
