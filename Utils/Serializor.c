@@ -4,6 +4,8 @@
 
 #include "Serializor.h"
 
+#include <stdbool.h>
+
 
 struct packet serializeRequest(const struct dnsHeader header, const struct dnsQuery query) {
     size_t packetSize =
@@ -52,48 +54,54 @@ struct packet serializeRequest(const struct dnsHeader header, const struct dnsQu
 }
 
 
-int read_name(const char* buf, size_t len, size_t *offset, char **out) {
+int read_name(const char* buf, size_t len, size_t *offset, char** name) {
     size_t pos = *offset;
     size_t start = pos;
-    size_t out_len = 0;
+    size_t nameLen = 0;
     char temp[256];
-    int jumped = 0;
+    bool jumped = FALSE;
 
     while (pos < len) {
-        uint8_t len_byte = buf[pos];
+        uint8_t labelLen = buf[pos];
 
-        if ((len_byte & 0xC0) == 0xC0) {
-            // Name compression pointer
-            if (pos + 1 >= len) return -1; // invalid
-            uint16_t pointer = ((len_byte & 0x3F) << 8) | buf[pos + 1];
+        // Check if this is a compression pointer (2 MSB are 11)
+        if ((labelLen & 0xC0) == 0xC0) {
+            if (pos + 1 >= len)
+                return EXIT_FAILURE; // invalid
+            uint16_t pointer = ((labelLen & 0x3F) << 8) | buf[pos + 1]; // Calculate 14 LSB - the offset from the start of the packet
             pos = pointer; // jump to the offset
-            jumped = 1;
+            jumped = TRUE; // set jumped
             continue;
         }
 
-        if (len_byte == 0) {
-            pos++; // end of name
+        if (labelLen == 0) {
+            // end of name
+            pos++;
             break;
         }
 
         pos++; // skip length byte
-        if (out_len + len_byte + 1 > sizeof(temp)) return -1;
-        memcpy(temp + out_len, buf + pos, len_byte);
-        out_len += len_byte;
-        temp[out_len++] = '.';
-        pos += len_byte;
+        if (nameLen + labelLen + 1 > sizeof(temp))
+            return EXIT_FAILURE; // buffer is to small
+        memcpy(temp + nameLen, buf + pos, labelLen); // copy the name to temp
+        nameLen += labelLen;
+        temp[nameLen] = '.';
+        nameLen++;
+        pos += labelLen;
     }
 
-    if (out_len > 0) temp[out_len - 1] = '\0'; // remove last dot
-    else temp[0] = '\0';
+    if (nameLen > 0)
+        temp[nameLen - 1] = '\0'; // remove last dot
+    else
+        temp[0] = '\0';
 
-    *out = malloc(out_len + 1);
-    if (!*out) return -1;
-    memcpy(*out, temp, out_len + 1);
+    *name = malloc(nameLen + 1);
+    memcpy(*name, temp, nameLen + 1);
 
-    if (!jumped) *offset = pos;
-    else *offset += 2; // pointer consumes 2 bytes
-
+    if (!jumped)
+        *offset = pos;
+    else
+        *offset += 2; // pointer consumes 2 bytes
     return 0;
 }
 
