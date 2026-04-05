@@ -24,14 +24,14 @@ Build with:
 make
 ```
 
-This produces `DNS_Client.exe`.
+This produces `DNS_Client.exe` in the `build` directory.
 
 ## Run
 
 Execute the program and enter the path to a text file containing domain names:
 
 ```cmd
-DNS_Client.exe
+build/DNS_Client.exe
 ```
 
 Then choose:

@@ -1,0 +1,3 @@
+*.txt
+build/*.o
+build/*.exe
